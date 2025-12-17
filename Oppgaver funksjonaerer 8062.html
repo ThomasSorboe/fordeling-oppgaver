@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oppgaver → Serviceleder (4 kolonner + lagring)</title>
+
+  <style>
+    :root{
+      --border:#d9d9d9;
+      --text:#111;
+      --muted:#666;
+      --bg:#ffffff;
+      --panel:#fbfbfb;
+
+      --ext:#1f8a3b;   /* grønn */
+      --extBg:#e9f7ee;
+
+      --int:#1f4fbf;   /* blå */
+      --intBg:#e9f0ff;
+
+      --shadow: 0 6px 18px rgba(0,0,0,.06);
+      --radius: 14px;
+    }
+
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      margin: 22px;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    h1{ margin: 0 0 8px; font-size: 22px; }
+    .hint{ margin: 0 0 14px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+
+    .topbar{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 0 0 18px;
+    }
+
+    .btnTop{
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 12px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 650;
+      white-space: nowrap; /* ingen bryting på knapper */
+    }
+    .btnTop:hover{ border-color:#999; }
+    .btnTop.danger{ border-color:#f2c0c0; }
+    .btnTop.danger:hover{ border-color:#d66; }
+
+    .muted{ color: var(--muted); font-size: 13px; }
+
+    /* =======================
+       4 KOLONNER (venstre→høyre)
+       ======================= */
+
+    /* Lar siden tilpasse seg skjerm: hvis det blir for bredt, får du horisontal scroll */
+    .layoutWrap{
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px;
+    }
+
+    /* DYNAMISK kolonneoppsett: 4 fleksible kolonner som skalerer med bredden */
+    .layout{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(320px, 1fr));
+      gap: 16px;
+      align-items:start;
+      max-width: 100%;
+    }
+
+    /* Responsivt: stables til 1 kolonne under 1200px for enkel bruk på smale skjermer */
+    @media (max-width: 1200px){
+      .layout{ grid-template-columns: 1fr; }
+    }
+
+    /* Kolonne-stacking for flere paneler */
+    .stack{
+      display:grid;
+      gap: 14px;
+      align-content:start;
+    }
+
+    .panel{
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      overflow:hidden;         /* sikrer ellipsis inni */
+      white-space: nowrap;     /* viktig: ingen bryting i panel */
+    }
+    .panel h2{ margin: 0 0 10px; font-size: 16px; white-space: inherit; }
+
+    .lists{ display: grid; gap: 12px; }
+
+    .dropzone{
+      border: 2px dashed #bbb;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fafafa;
+      min-height: 140px;
+      overflow:hidden;         /* kombinert med ellipsis gir forutsigbar visning */
+      white-space: nowrap;     /* ikke bryt innhold i dropzone */
+      text-overflow: ellipsis;
+    }
+    .dropzone.dragover{
+      border-color:#222;
+      background:#f3f3f3;
+    }
+
+    .list{ display: grid; gap: 10px; }
+
+    /* KORT – robust tekst (alltid synlig) */
+    .task{
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+
+      background: #fff;
+      cursor: grab;
+      user-select: none;
+
+      min-width: 0;            /* nødvendig for ellipsis i grid */
+      overflow:hidden;         /* ellipsis */
+      white-space: nowrap;     /* ikke bryt kortinnhold */
+      text-overflow: ellipsis; /* vis … når for langt */
+    }
+    .task:active{ cursor: grabbing; }
+
+    .task .left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 0;
+      overflow:hidden;
+    }
+    .task .left strong{
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+      max-width: 100%;
+    }
+
+    .badge{
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #f1f1f1;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .pill{
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background:#fff;
+      color: var(--muted);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    /* FARGER */
+    .external{
+      border-color: color-mix(in srgb, var(--ext) 45%, var(--border));
+      background: var(--extBg);
+    }
+    .external .pill{
+      border-color: color-mix(in srgb, var(--ext) 55%, var(--border));
+      color: var(--ext);
+    }
+
+    .internal{
+      border-color: color-mix(in srgb, var(--int) 45%, var(--border));
+      background: var(--intBg);
+    }
+    .internal .pill{
+      border-color: color-mix(in srgb, var(--int) 55%, var(--border));
+      color: var(--int);
+    }
+
+    .siloHeader{
+      display:flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      white-space: nowrap; /* ikke bryt header */
+    }
+    .siloTitle{ font-size: 16px; margin: 0; }
+    .total{ font-weight: 900; }
+
+    .bar{
+      height: 10px;
+      border-radius: 999px;
+      background: #eaeaea;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .fill{
+      height: 100%;
+      width: 0%;
+      background: #111;
+      transition: width 120ms ease;
+    }
+
+    .error{
+      color: #b00020;
+      font-size: 13px;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+
+    .siloRow{ cursor: default; }
+    .controls{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    .btn{
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .btn:hover{ border-color:#999; }
+
+    .totalPanelHeader{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      white-space: nowrap;
+    }
+    .totalBig{
+      font-weight: 950;
+      font-size: 22px;
+      white-space: nowrap;
+    }
+
+    .task.summary{ cursor: default; min-width: 0; }
+    .task.summary .controls{ display:none; }
+  </style>
+</head>
+
+<body>
+  <h1>Oppgaver → Serviceleder</h1>
+  <p class="hint">
+    <p>Dra fra Ute/Inne inn til ønsket <b>funksjonær</b>. Bruk <b>+ / −</b> for å endre % (maks 100% per funksjonær).<p>
+<p>Velg <b>Eksporter JSON</b> for å lagre fordelingen, og <b>Importer JSON</b> for å hente tidligere lagret forslag<p>
+  </p>
+
+  <div class="topbar">
+
+  <button id="clearBtn" class="btnTop danger" type="button">Nullstill</button>
+
+  <button id="exportBtn" class="btnTop" type="button">Eksporter JSON</button>
+
+  <label class="btnTop" style="display:inline-flex; align-items:center; gap:8px;">
+    Importer JSON
+    <input id="importInput" type="file" accept="application/json" style="display:none;">
+  </label>
+
+  <span style="flex:1 1 auto;"></span>
+
+  <span id="status" class="muted"></span>
+
+</div>
+
+  <div class="layoutWrap">
+  <div class="layout">
+    <!-- KOL 1: OPPGAVER -->
+    <div class="panel">
+      <div class="lists">
+        <div>
+          <h2>Ute👟👟</h2>
+          <div id="externalList" class="list" aria-label="Eksterne oppgaver"></div>
+        </div>
+
+        <div>
+          <h2>Inne 🧦🧦</h2>
+          <div id="internalList" class="list" aria-label="Interne oppgaver"></div>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:12px;">
+        .
+      </p>
+    </div>
+
+    <!-- KOL 2: SL1 + SL2 -->
+    <div class="stack" id="colSL12"></div>
+
+    <!-- KOL 3: SL3 + KOORD -->
+    <div class="stack" id="colSL3K"></div>
+
+    <!-- KOL 4: TOTAL -->
+    <div class="panel">
+      <div class="totalPanelHeader">
+        <h2 style="margin:0;">Totalt behov avdeling</h2>
+        <div class="totalBig"><span id="grandTotal">0</span>%</div>
+      </div>
+      <div class="bar" title="Skalering: 0–300% (visuelt). Over 300% vises fortsatt som 300% i baren.">
+        <div id="grandFill" class="fill"></div>
+      </div>
+      <div class="muted" style="margin:8px 0 10px;">
+        Summerer % fra serviceledere.
+      </div>
+
+      <div id="grandList" class="list" aria-label="Totalsammendrag"></div>
+    </div>
+  </div>
+</div>
+
+  <script>
+    const externalTasks = [
+      { id: "kundemoter",        name: "Kundemøter", pct: 5 },
+      { id: "oppfolging_tek",    name: "Oppfølging tekniker", pct: 5 },
+      { id: "tverrfaglig_salg",  name: "Tverrfaglig salg", pct: 5 },
+      { id: "befaringer",        name: "Befaringer", pct: 5 },
+      { id: "prosjektoppf",      name: "Prosjektoppfølging", pct: 5 },
+      { id: "oppf_leverandor",   name: "Oppfølging leverandører", pct: 5 },
+    ];
+
+    const internalTasks = [
+      { id: "innboks",           name: "E-post/innboks/adm", pct: 5 },
+      { id: "ordre",             name: "Opprette/oppdatere ordre (AO/HM/P3)", pct: 5 },
+      { id: "fakturaforslag",    name: "Fakturaforslag", pct: 5 },
+      { id: "oppf_teknikere",    name: "Teknisk oppfølging teknikere", pct: 5 },
+      { id: "oppf_kunder",       name: "Teknisk oppfølging kunder", pct: 5 },
+      { id: "plan_koord",        name: "Planlegging/koordinering internt", pct: 5 },
+      { id: "tilbudsarbeid",     name: "Tilbudsarbeid", pct: 5 },
+      { id: "interne_moter",     name: "Interne møter", pct: 5 }
+    ];
+
+    const siloDefs = [
+      { id: "silo-1", title: "Serviceleder 1", limit: 100 },
+      { id: "silo-2", title: "Serviceleder 2", limit: 100 },
+      { id: "silo-3", title: "Serviceleder 3", limit: 100 },
+      { id: "silo-4", title: "Koordinator",   limit: 100 }
+    ];
+
+    const STORAGE_KEY = "oppgavefordeling_v2_4col";
+    const taskIndex = new Map();
+    const silos = {};
+
+    const externalListEl = document.getElementById("externalList");
+    const internalListEl = document.getElementById("internalList");
+
+    const grandTotalEl = document.getElementById("grandTotal");
+    const grandFillEl  = document.getElementById("grandFill");
+    const grandListEl  = document.getElementById("grandList");
+
+    const statusEl = document.getElementById("status");
+
+    function status(msg){
+      statusEl.textContent = msg || "";
+      if (msg){
+        clearTimeout(status._t);
+        status._t = setTimeout(() => statusEl.textContent = "", 3500);
+      }
+    }
+
+    function setError(siloId, msg){
+      const errEl = document.getElementById(`err-${siloId}`);
+      if (errEl) errEl.textContent = msg || "";
+    }
+
+    function siloTotal(siloId){
+      const m = silos[siloId];
+      let sum = 0;
+      for (const [taskId, entry] of m.entries()){
+        const t = taskIndex.get(taskId);
+        sum += (t.pct * entry.count);
+      }
+      return sum;
+    }
+
+    function updateSiloUI(siloId){
+      const total = siloTotal(siloId);
+      const totalEl = document.getElementById(`total-${siloId}`);
+      const fillEl  = document.getElementById(`fill-${siloId}`);
+      if (totalEl) totalEl.textContent = total;
+
+      const def = siloDefs.find(s => s.id === siloId);
+      const limit = def?.limit ?? 100;
+      if (fillEl) fillEl.style.width = Math.min(limit, total) + "%";
+    }
+
+    function createShopTaskEl(task, source){
+      const el = document.createElement("div");
+      el.className = `task ${source === "external" ? "external" : "internal"}`;
+      el.draggable = true;
+      el.dataset.taskId = task.id;
+
+      el.innerHTML = `
+        <div class="left">
+          <span class="pill">${source === "external" ? "Ekstern" : "Intern"}</span>
+          <strong title="${task.name}">${task.name}</strong>
+        </div>
+        <span class="badge">${task.pct}%</span>
+      `;
+
+      el.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("application/json", JSON.stringify({ taskId: task.id }));
+        e.dataTransfer.effectAllowed = "copy";
+      });
+
+      return el;
+    }
+
+    function renderShopLists(){
+      externalListEl.innerHTML = "";
+      internalListEl.innerHTML = "";
+      externalTasks.forEach(t => externalListEl.appendChild(createShopTaskEl(t, "external")));
+      internalTasks.forEach(t => internalListEl.appendChild(createShopTaskEl(t, "internal")));
+    }
+
+    function createSiloRowEl(siloId, taskId, entry){
+      const t = taskIndex.get(taskId);
+      const totalPct = t.pct * entry.count;
+
+      const el = document.createElement("div");
+      el.className = `task siloRow ${t.source === "external" ? "external" : "internal"}`;
+      el.draggable = false;
+
+      el.innerHTML = `
+        <div class="left">
+          <span class="pill">${t.source === "external" ? "Ekstern" : "Intern"}</span>
+          <strong title="${t.name}">${t.name}</strong>
+        </div>
+
+        <div class="controls">
+          <button class="btn" type="button" aria-label="Minus">−</button>
+          <span class="pill" title="Antall">${entry.count}×</span>
+          <span class="badge" title="Sum">${totalPct}%</span>
+          <button class="btn" type="button" aria-label="Pluss">+</button>
+        </div>
+      `;
+
+      el.querySelector('.controls button[aria-label="Minus"]').addEventListener("click", () => adjustCount(siloId, taskId, -1));
+      el.querySelector('.controls button[aria-label="Pluss"]').addEventListener("click",  () => adjustCount(siloId, taskId, +1));
+
+      return el;
+    }
+
+    function renderSilo(siloId){
+      const siloEl = document.getElementById(siloId);
+      if (!siloEl) return;
+      siloEl.innerHTML = "";
+
+      const rows = [];
+      for (const [taskId, entry] of silos[siloId].entries()){
+        const t = taskIndex.get(taskId);
+        rows.push({ taskId, entry, totalPct: t.pct * entry.count });
+      }
+
+      rows.sort((a,b) => a.totalPct - b.totalPct);
+      rows.forEach(r => siloEl.appendChild(createSiloRowEl(siloId, r.taskId, r.entry)));
+
+      updateSiloUI(siloId);
+    }
+
+    function computeGrand(){
+      const agg = new Map();
+      let total = 0;
+
+      for (const def of siloDefs){
+        const m = silos[def.id];
+        for (const [taskId, entry] of m.entries()){
+          const t = taskIndex.get(taskId);
+          total += t.pct * entry.count;
+          agg.set(taskId, (agg.get(taskId) || 0) + entry.count);
+        }
+      }
+      return { total, agg };
+    }
+
+    function renderGrand(){
+      const { total, agg } = computeGrand();
+      grandTotalEl.textContent = total;
+
+      const scaled = Math.min(300, total);
+      grandFillEl.style.width = (scaled / 3) + "%";
+
+      const rows = [];
+      for (const [taskId, count] of agg.entries()){
+        const t = taskIndex.get(taskId);
+        rows.push({ taskId, count, totalPct: t.pct * count, source: t.source, name: t.name });
+      }
+      rows.sort((a,b) => a.totalPct - b.totalPct);
+
+      grandListEl.innerHTML = "";
+      rows.forEach(r => {
+        const t = taskIndex.get(r.taskId);
+        const el = document.createElement("div");
+        el.className = `task summary ${t.source === "external" ? "external" : "internal"}`;
+        el.draggable = false;
+        el.innerHTML = `
+          <div class="left">
+            <span class="pill">${t.source === "external" ? "Ekstern" : "Intern"}</span>
+            <strong title="${t.name}">${t.name}</strong>
+          </div>
+          <span class="pill" title="Antall">${r.count}×</span>
+          <span class="badge" title="Sum">${r.totalPct}%</span>
+        `;
+        grandListEl.appendChild(el);
+      });
+    }
+
+    function adjustCount(siloId, taskId, delta){
+      setError(siloId, "");
+
+      const t = taskIndex.get(taskId);
+      const m = silos[siloId];
+      const current = m.get(taskId) || { count: 0 };
+
+      const def = siloDefs.find(s => s.id === siloId);
+      const limit = def?.limit ?? 100;
+
+      if (delta > 0){
+        const projected = siloTotal(siloId) + t.pct;
+        if (projected > limit){
+          setError(siloId, `Ikke plass: +${t.pct}% ville gitt ${projected}% (maks ${limit}%).`);
+          return;
+        }
+        current.count += 1;
+        m.set(taskId, current);
+      } else if (delta < 0){
+        current.count -= 1;
+        if (current.count <= 0) m.delete(taskId);
+        else m.set(taskId, current);
+      }
+
+      renderSilo(siloId);
+      renderGrand();
+    }
+
+    function setupSiloDropzone(siloId){
+      const zone = document.getElementById(siloId);
+      if (!zone) return;
+
+      zone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        zone.classList.add("dragover");
+        e.dataTransfer.dropEffect = "copy";
+      });
+
+      zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+
+      zone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        zone.classList.remove("dragover");
+        setError(siloId, "");
+
+        const raw = e.dataTransfer.getData("application/json");
+        if (!raw) return;
+
+        let payload;
+        try { payload = JSON.parse(raw); } catch { return; }
+        if (!payload?.taskId) return;
+
+        adjustCount(siloId, payload.taskId, +1);
+      });
+    }
+
+    function renderSiloPanels(){
+      const colSL12 = document.getElementById("colSL12");
+      const colSL3K = document.getElementById("colSL3K");
+      colSL12.innerHTML = "";
+      colSL3K.innerHTML = "";
+
+      siloDefs.forEach(def => {
+        silos[def.id] = silos[def.id] || new Map();
+
+        const panel = document.createElement("div");
+        panel.className = "panel";
+        panel.innerHTML = `
+          <div class="siloHeader">
+            <h2 class="siloTitle">${def.title}</h2>
+            <div class="total"><span id="total-${def.id}">0</span>%</div>
+          </div>
+          <div id="${def.id}" class="list dropzone" aria-label="${def.title}"></div>
+          <div class="bar"><div id="fill-${def.id}" class="fill"></div></div>
+          <div id="err-${def.id}" class="error" aria-live="polite"></div>
+        `;
+
+        if (def.id === "silo-1" || def.id === "silo-2") colSL12.appendChild(panel);
+        else colSL3K.appendChild(panel);
+
+        setupSiloDropzone(def.id);
+      });
+    }
+
+    // --- LAGRING ---
+    function serializeState(){
+      const out = { version: 2, silos: {} };
+      siloDefs.forEach(def => {
+        out.silos[def.id] = {};
+        for (const [taskId, entry] of silos[def.id].entries()){
+          out.silos[def.id][taskId] = entry.count;
+        }
+      });
+      return out;
+    }
+
+    function applyState(state){
+      siloDefs.forEach(def => silos[def.id] = new Map());
+      if (!state?.silos) return;
+
+      siloDefs.forEach(def => {
+        const obj = state.silos[def.id] || {};
+        const m = new Map();
+        for (const [taskId, count] of Object.entries(obj)){
+          if (!taskIndex.has(taskId)) continue;
+          const c = Number(count);
+          if (!Number.isFinite(c) || c <= 0) continue;
+          m.set(taskId, { count: c });
+        }
+        silos[def.id] = m;
+      });
+
+      siloDefs.forEach(def => renderSilo(def.id));
+      renderGrand();
+    }
+
+    function saveToLocal(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
+      status("Lagret ✔");
+    }
+
+    function loadFromLocal(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return status("Ingen lagring funnet.");
+      try{
+        applyState(JSON.parse(raw));
+        status("Åpnet ✔");
+      } catch {
+        status("Kunne ikke åpne lagring.");
+      }
+    }
+
+    function clearAll(){
+      siloDefs.forEach(def => silos[def.id] = new Map());
+      siloDefs.forEach(def => renderSilo(def.id));
+      renderGrand();
+      status("Nullstilt.");
+    }
+
+    function exportJSON(){
+      const blob = new Blob([JSON.stringify(serializeState(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "oppgavefordeling.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      status("Eksportert ✔");
+    }
+
+    async function importJSON(file){
+      try{
+        const payload = JSON.parse(await file.text());
+        applyState(payload);
+        status("Importert ✔");
+      } catch {
+        status("Import feilet.");
+      }
+    }
+
+    function init(){
+      externalTasks.forEach(t => taskIndex.set(t.id, { ...t, source: "external" }));
+      internalTasks.forEach(t => taskIndex.set(t.id, { ...t, source: "internal" }));
+
+      renderShopLists();
+      renderSiloPanels();
+
+      siloDefs.forEach(def => renderSilo(def.id));
+      renderGrand();
+
+      const saveBtn = document.getElementById("saveBtn");
+      if (saveBtn) saveBtn.addEventListener("click", saveToLocal);
+
+      const loadBtn = document.getElementById("loadBtn");
+      if (loadBtn) loadBtn.addEventListener("click", loadFromLocal);
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        if (confirm("Nullstille alle siloer?")) clearAll();
+      });
+
+      document.getElementById("exportBtn").addEventListener("click", exportJSON);
+
+      const importInput = document.getElementById("importInput");
+      importInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) importJSON(file);
+        importInput.value = "";
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
